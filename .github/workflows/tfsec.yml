@@ -1,34 +1,36 @@
-name: Gitleaks Scan # Workflow name.
+name: Terraform Security Scan
 
-on: # Events that trigger the workflow.
-  pull_request: # Trigger on pull requests to 'main'.
+on:
+  pull_request:
     branches:
       - main
-  push: # Trigger on pushes to 'main'.
+
+  push:
     branches:
       - main
-  workflow_dispatch: # Allow manual workflow runs.
+      - "feature/**"
+      - "feat/**"
+      - "fix/**"
+      - "wip/**"
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
-  scan:
-    name: Run Gitleaks # Job name.
-    runs-on: ubuntu-latest # Use Ubuntu for the job.
+  tfsec:
+    name: TFSec Security Check
+    runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code # Get the repository code.
-      uses: actions/checkout@v3
-      with:
-        fetch-depth: 0 # Fetch full history for git diff.
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Run Gitleaks Action # Scan for secrets using Gitleaks.
-      uses: gitleaks/gitleaks-action@v2
-      with:
-        args: git --log-opts $(git merge-base origin/main HEAD)..HEAD --report-format sarif --report-path gitleaks.sarif
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Authenticate with GitHub.
-
-    # Optional: Upload results to GitHub Security Tab.
-    # - name: Upload Gitleaks SARIF Report
-    #   uses: github/codeql-action/upload-sarif@v3
-    #   with:
-    #     sarif_file: gitleaks.sarif
+      - name: Scan Terraform with tfsec
+        uses: aquasecurity/tfsec-action@v1.0.3
+        with:
+          working_directory: .
+          version: v1.28.14
+          additional_args: --minimum-severity HIGH --no-color
+          github_token: ${{ secrets.GITHUB_TOKEN }}
